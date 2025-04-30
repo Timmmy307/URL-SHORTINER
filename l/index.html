@@ -5,27 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Redirecting...</title>
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const encodedUrl = urlParams.get('=');
-
-        if (encodedUrl) {
-            const decodedUrl = customDecode(encodedUrl);
-            if (decodedUrl) {
-                window.location.href = decodedUrl;
-            } else {
-                document.body.innerHTML = '<h1>Invalid or corrupted link.</h1>';
-            }
-        } else {
-            document.body.innerHTML = '<h1>Missing redirect parameter.</h1>';
-        }
-
-        function customDecode(encoded) {
+        document.addEventListener("DOMContentLoaded", () => {
             try {
-                return atob(encoded); // Decode Base64
-            } catch {
-                return null;
+                // Extract the new query parameter format (?l=)
+                const urlParams = new URLSearchParams(window.location.search);
+                const encodedUrl = urlParams.get('l');
+
+                // Debugging: Log the query parameter for analysis
+                console.log('Encoded URL:', encodedUrl);
+
+                if (encodedUrl && encodedUrl.trim() !== '') {
+                    try {
+                        // Decode the Base64 string
+                        const decodedUrl = atob(encodedUrl);
+                        console.log('Decoded URL:', decodedUrl);
+
+                        if (decodedUrl.startsWith("http")) {
+                            // Redirect to the decoded URL
+                            window.location.href = decodedUrl;
+                        } else {
+                            // If the decoded URL is invalid or doesn't start with "http"
+                            document.body.innerHTML = '<h1>Invalid or corrupted link. Unable to redirect.</h1>';
+                        }
+                    } catch (decodeError) {
+                        // Handle invalid Base64 strings
+                        console.error('Error decoding Base64:', decodeError);
+                        document.body.innerHTML = '<h1>The provided link is not a valid Base64-encoded URL.</h1>';
+                    }
+                } else {
+                    // If the parameter is missing or empty
+                    document.body.innerHTML = '<h1>Missing redirect parameter. Ensure your link includes "?l=".</h1>';
+                }
+            } catch (error) {
+                // Catch and handle any unexpected errors
+                console.error('Error during redirection:', error);
+                document.body.innerHTML = '<h1>An unexpected error occurred. Unable to redirect.</h1>';
             }
-        }
+        });
     </script>
 </head>
 <body>

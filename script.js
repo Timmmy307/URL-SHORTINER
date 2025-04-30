@@ -8,14 +8,10 @@ document.getElementById('linkForm').addEventListener('submit', (event) => {
         return;
     }
 
-    // Encode the URL for redirection
-    const encodedUrl = customEncode(urlInput);
+    // Custom encoding: simple and reliable
+    const encodedUrl = btoa(urlInput); // Base64 encoding
 
     // Generate the short link
     const shortLink = `${window.location.origin}/l/?=${encodedUrl}`;
     document.getElementById('output').textContent = `Short link created: ${shortLink}`;
 });
-
-function customEncode(url) {
-    return btoa(url); // Encode using Base64 for simplicity
-}
