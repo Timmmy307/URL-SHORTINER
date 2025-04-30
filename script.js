@@ -1,49 +1,53 @@
-const mappingFile = 'links.json';
-
 document.getElementById('linkForm').addEventListener('submit', (event) => {
     event.preventDefault();
 
     const urlInput = document.getElementById('url').value.trim();
 
     if (!urlInput) {
-        alert('Original URL is required.');
+        alert('Please enter a valid URL.');
         return;
     }
 
-    // Generate a short code (hex)
-    const shortCode = generateRandomHex();
+    // Custom obfuscation method
+    const obfuscatedUrl = obfuscateUrl(urlInput);
 
-    // Fetch and update the mapping file in memory
-    fetch(mappingFile)
-        .then(response => response.json())
-        .then(mapping => {
-            mapping[shortCode] = urlInput;
-
-            // Display the short link
-            document.getElementById('output').textContent = `Short link created: mainlink.test/?=${shortCode}`;
-            console.log(mapping); // Simulated in-memory update for static sites
-        })
-        .catch(error => console.error('Error:', error));
+    // Generate the short link with `/l/?=` structure
+    const shortLink = `${window.location.origin}/l/?=${obfuscatedUrl}`;
+    document.getElementById('output').textContent = `Short link created: ${shortLink}`;
 });
 
-// Generate an 8-character random hex code
-function generateRandomHex() {
-    return Math.random().toString(16).substr(2, 8);
+// Obfuscation function: scramble the URL into an unrecognizable string
+function obfuscateUrl(url) {
+    let scrambled = encodeURIComponent(url) // Ensure the URL is safe for encoding
+        .split('')
+        .map((char) => char.charCodeAt(0).toString(36)) // Convert to base-36 (shorter than hex)
+        .join('');
+    return scrambled;
 }
 
-// Handle redirection based on `/?=` in the URL
-const urlParams = new URLSearchParams(window.location.search);
-const shortCode = urlParams.get('=');
+// Decoding function: reverse the obfuscation process
+function decodeObfuscatedUrl(obfuscated) {
+    try {
+        let decoded = obfuscated.match(/.{1,2}/g) // Split by pairs (base-36 encoding)
+            .map((pair) => String.fromCharCode(parseInt(pair, 36)))
+            .join('');
+        return decodeURIComponent(decoded); // Decode back into a normal URL
+    } catch {
+        return null;
+    }
+}
 
-if (shortCode) {
-    fetch(mappingFile)
-        .then(response => response.json())
-        .then(mapping => {
-            if (mapping[shortCode]) {
-                window.location.href = mapping[shortCode];
-            } else {
-                document.body.innerHTML = 'Invalid or missing link.';
-            }
-        })
-        .catch(error => console.error('Error:', error));
+// Redirect Logic
+const urlParams = new URLSearchParams(window.location.search);
+const obfuscatedUrl = urlParams.get('=');
+
+if (obfuscatedUrl) {
+    const decodedUrl = decodeObfuscatedUrl(obfuscatedUrl);
+    if (decodedUrl) {
+        window.location.href = decodedUrl;
+    } else {
+        document.body.innerHTML = '<h1>Invalid or corrupted link.</h1>';
+    }
+} else {
+    document.body.innerHTML = '<h1>Missing redirect parameter.</h1>';
 }
