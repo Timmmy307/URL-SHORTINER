@@ -6,10 +6,10 @@
     <title>Redirecting...</title>
     <script>
         const urlParams = new URLSearchParams(window.location.search);
-        const obfuscatedUrl = urlParams.get('=');
+        const encodedUrl = urlParams.get('=');
 
-        if (obfuscatedUrl) {
-            const decodedUrl = decodeObfuscatedUrl(obfuscatedUrl);
+        if (encodedUrl) {
+            const decodedUrl = customDecode(encodedUrl);
             if (decodedUrl) {
                 window.location.href = decodedUrl;
             } else {
@@ -19,12 +19,9 @@
             document.body.innerHTML = '<h1>Missing redirect parameter.</h1>';
         }
 
-        function decodeObfuscatedUrl(obfuscated) {
+        function customDecode(encoded) {
             try {
-                let decoded = obfuscated.match(/.{1,2}/g) // Split by pairs (base-36 encoding)
-                    .map((pair) => String.fromCharCode(parseInt(pair, 36)))
-                    .join('');
-                return decodeURIComponent(decoded); // Decode back into a normal URL
+                return atob(encoded); // Decode Base64
             } catch {
                 return null;
             }
