@@ -5,39 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Redirecting...</title>
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
+        document.addEventListener("DOMContentLoaded", async () => {
             try {
-                // Extract the new query parameter format (?l=)
+                // Extract the query parameter (?l=custom-key)
                 const urlParams = new URLSearchParams(window.location.search);
-                const encodedUrl = urlParams.get('l');
+                const linkKey = urlParams.get('l');
+                console.log('Link Key:', linkKey);
 
-                // Debugging: Log the query parameter for analysis
-                console.log('Encoded URL:', encodedUrl);
+                if (linkKey && linkKey.trim() !== '') {
+                    // Fetch the custom links file
+                    const customMapping = await fetch('privateLinks.json').then(res => res.json());
 
-                if (encodedUrl && encodedUrl.trim() !== '') {
-                    try {
-                        // Decode the Base64 string
-                        const decodedUrl = atob(encodedUrl);
-                        console.log('Decoded URL:', decodedUrl);
-
-                        if (decodedUrl.startsWith("http")) {
-                            // Redirect to the decoded URL
-                            window.location.href = decodedUrl;
-                        } else {
-                            // If the decoded URL is invalid or doesn't start with "http"
-                            document.body.innerHTML = '<h1>Invalid or corrupted link. Unable to redirect.</h1>';
-                        }
-                    } catch (decodeError) {
-                        // Handle invalid Base64 strings
-                        console.error('Error decoding Base64:', decodeError);
-                        document.body.innerHTML = '<h1>The provided link is not a valid Base64-encoded URL.</h1>';
+                    if (customMapping[linkKey]) {
+                        console.log('Custom Link Found:', customMapping[linkKey]);
+                        // Redirect to the corresponding URL
+                        window.location.href = customMapping[linkKey];
+                    } else {
+                        // If the key doesn't exist
+                        document.body.innerHTML = '<h1>Link not found. This is a private link.</h1>';
                     }
                 } else {
-                    // If the parameter is missing or empty
+                    // If the parameter is missing
                     document.body.innerHTML = '<h1>Missing redirect parameter. Ensure your link includes "?l=".</h1>';
                 }
             } catch (error) {
-                // Catch and handle any unexpected errors
                 console.error('Error during redirection:', error);
                 document.body.innerHTML = '<h1>An unexpected error occurred. Unable to redirect.</h1>';
             }
