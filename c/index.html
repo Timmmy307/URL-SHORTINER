@@ -3,84 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Custom Links</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 20px;
-        }
-        .link-container {
-            margin: 10px 0;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        .copied {
-            color: green;
-            font-size: 14px;
-        }
-    </style>
-</head>
-<body>
-    <h1>Custom Links</h1>
-    <div id="links-container">
-        <p>Loading custom links...</p>
-    </div>
+    <title>Redirecting Custom Link...</title>
     <script>
-        // Load and display custom links
-        async function loadCustomLinks() {
+        document.addEventListener("DOMContentLoaded", async () => {
             try {
-                // Fetch the private links from /l/privateLinks.json
-                const response = await fetch('/l/privateLinks.json');
-                const links = await response.json();
+                // Extract the custom key parameter (?c=)
+                const urlParams = new URLSearchParams(window.location.search);
+                const customKey = urlParams.get('c');
+                console.log('Custom Key:', customKey);
 
-                // Get the container to display the links
-                const container = document.getElementById('links-container');
-                container.innerHTML = ''; // Clear the loading message
+                if (customKey && customKey.trim() !== '') {
+                    try {
+                        const response = await fetch('/l/privateLinks.json');
+                        const customLinks = await response.json();
+                        console.log('Loaded Custom Links:', customLinks);
 
-                // Create a button for each custom link
-                for (const key in links) {
-                    const link = links[key];
-                    const linkContainer = document.createElement('div');
-                    linkContainer.className = 'link-container';
-
-                    const button = document.createElement('button');
-                    button.textContent = `${key}`;
-                    button.onclick = () => copyToClipboard(`${window.location.origin}/?l=${key}`);
-
-                    const info = document.createElement('span');
-                    info.className = 'copied';
-                    info.textContent = ' (Copied!)';
-                    info.style.display = 'none';
-
-                    button.addEventListener('click', () => {
-                        copyToClipboard(`${window.location.origin}/l/?l=${key}`);
-                        info.style.display = 'inline';
-                        setTimeout(() => (info.style.display = 'none'), 2000); // Hide "Copied!" after 2 seconds
-                    });
-
-                    linkContainer.appendChild(button);
-                    linkContainer.appendChild(info);
-                    container.appendChild(linkContainer);
+                        if (customLinks[customKey]) {
+                            console.log('Custom Link Found:', customLinks[customKey]);
+                            window.location.href = customLinks[customKey];
+                        } else {
+                            document.body.innerHTML = '<h1>Link not found. This is a private custom link.</h1>';
+                        }
+                    } catch (error) {
+                        console.error('Error fetching private links:', error);
+                        document.body.innerHTML = '<h1>Unable to load private links. Please try again later.</h1>';
+                    }
+                } else {
+                    document.body.innerHTML = '<h1>Missing redirect parameter. Ensure your link includes "?c=".</h1>';
                 }
             } catch (error) {
-                console.error('Error loading custom links:', error);
-                document.getElementById('links-container').innerHTML = '<p>Failed to load custom links.</p>';
+                console.error('Unexpected error:', error);
+                document.body.innerHTML = '<h1>An unexpected error occurred. Unable to redirect.</h1>';
             }
-        }
-
-        // Copy the provided text to the clipboard
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text)
-                .then(() => console.log('Copied to clipboard:', text))
-                .catch(err => console.error('Failed to copy to clipboard:', err));
-        }
-
-        // Load the links when the page loads
-        loadCustomLinks();
+        });
     </script>
+</head>
+<body>
+    <p>Redirecting Custom Link...</p>
 </body>
 </html>

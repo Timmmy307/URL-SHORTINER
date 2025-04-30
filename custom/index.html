@@ -57,7 +57,7 @@
                     info.style.display = 'none';
 
                     button.addEventListener('click', () => {
-                        copyToClipboard(`${window.location.origin}/l/?l=${key}`);
+                        copyToClipboard(`${window.location.origin}/c/?c=${key}`);
                         info.style.display = 'inline';
                         setTimeout(() => (info.style.display = 'none'), 2000); // Hide "Copied!" after 2 seconds
                     });
