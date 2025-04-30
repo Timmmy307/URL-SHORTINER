@@ -25,10 +25,8 @@
                 return;
             }
 
-            // Encode the URL using Base64 for simplicity
+            // Create a Base64-encoded short link
             const encodedUrl = btoa(urlInput);
-
-            // Generate the short link using the new "/?l=" format
             const shortLink = `${window.location.origin}/l/?l=${encodedUrl}`;
             document.getElementById('output').textContent = `Short link created: ${shortLink}`;
         });

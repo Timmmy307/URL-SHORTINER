@@ -7,29 +7,55 @@
     <script>
         document.addEventListener("DOMContentLoaded", async () => {
             try {
-                // Extract the query parameter (?l=custom-key)
+                // Extract query parameters (?l= or ?c=)
                 const urlParams = new URLSearchParams(window.location.search);
-                const linkKey = urlParams.get('l');
-                console.log('Link Key:', linkKey);
+                const encodedUrl = urlParams.get('l'); // Base64 encoded URL
+                const customKey = urlParams.get('c');  // Custom key for private links
 
-                if (linkKey && linkKey.trim() !== '') {
-                    // Fetch the custom links file
-                    const customMapping = await fetch('privateLinks.json').then(res => res.json());
+                if (encodedUrl) {
+                    // Handle Base64-encoded normal links
+                    console.log('Encoded URL:', encodedUrl);
+                    try {
+                        // Decode Base64 to get the original URL
+                        const decodedUrl = atob(encodedUrl);
+                        console.log('Decoded URL:', decodedUrl);
 
-                    if (customMapping[linkKey]) {
-                        console.log('Custom Link Found:', customMapping[linkKey]);
-                        // Redirect to the corresponding URL
-                        window.location.href = customMapping[linkKey];
-                    } else {
-                        // If the key doesn't exist
-                        document.body.innerHTML = '<h1>Link not found. This is a private link.</h1>';
+                        if (decodedUrl.startsWith("http")) {
+                            // Redirect to the decoded URL
+                            window.location.href = decodedUrl;
+                        } else {
+                            document.body.innerHTML = '<h1>Invalid or corrupted link.</h1>';
+                        }
+                    } catch (error) {
+                        console.error('Error decoding Base64:', error);
+                        document.body.innerHTML = '<h1>The provided link is not valid.</h1>';
+                    }
+                } else if (customKey) {
+                    // Handle custom private links
+                    console.log('Custom Key:', customKey);
+                    try {
+                        // Fetch custom links from privateLinks.json
+                        const response = await fetch('/l/privateLinks.json');
+                        const customLinks = await response.json();
+                        console.log('Loaded Custom Links:', customLinks);
+
+                        if (customLinks[customKey]) {
+                            console.log('Custom Link Found:', customLinks[customKey]);
+                            // Redirect to the corresponding URL
+                            window.location.href = customLinks[customKey];
+                        } else {
+                            document.body.innerHTML = '<h1>Link not found. This is a private custom link.</h1>';
+                        }
+                    } catch (error) {
+                        console.error('Error fetching private links:', error);
+                        document.body.innerHTML = '<h1>Unable to load private links. Please try again later.</h1>';
                     }
                 } else {
-                    // If the parameter is missing
-                    document.body.innerHTML = '<h1>Missing redirect parameter. Ensure your link includes "?l=".</h1>';
+                    // If neither `l` nor `c` parameters are found
+                    document.body.innerHTML = '<h1>Missing redirect parameter. Use "?l=" for normal links or "?c=" for custom links.</h1>';
                 }
             } catch (error) {
-                console.error('Error during redirection:', error);
+                console.error('Unexpected error:', error);
                 document.body.innerHTML = '<h1>An unexpected error occurred. Unable to redirect.</h1>';
             }
         });
