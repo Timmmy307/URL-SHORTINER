@@ -286,6 +286,15 @@ app.post('/api/delete-link', async (req, res) => {
     }
 });
 
+// Add CSP header to allow fonts and other resources
+app.use((req, res, next) => {
+    res.setHeader(
+        "Content-Security-Policy",
+        "default-src 'self'; font-src 'self' https://fonts.gstatic.com data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+    );
+    next();
+});
+
 // Serve /owner as a static directory (for /owner/index.html)
 app.use('/owner', express.static(path.join(PUBLIC_DIR, 'owner')));
 

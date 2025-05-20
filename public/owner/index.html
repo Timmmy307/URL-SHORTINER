@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickLinkr Owner Panel</title>
+    <style>
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #fc5c7d 0%, #6a82fb 100%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+        .brand {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #fff;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 8px rgba(44,44,84,0.18);
+        }
+        .container {
+            background: #fff;
+            max-width: 420px;
+            margin: 60px auto 0 auto;
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(44,44,84,0.18);
+            padding: 36px 32px 28px 32px;
+            text-align: center;
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 2.1rem;
+            color: #4a4a8a;
+            letter-spacing: 1px;
+        }
+        label {
+            font-weight: 500;
+            color: #444;
+        }
+        input[type="text"], input[type="url"], input[type="password"] {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0 18px 0;
+            border: 1px solid #bdbdbd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border 0.2s;
+        }
+        input[type="text"]:focus, input[type="url"]:focus, input[type="password"]:focus {
+            border: 1.5px solid #fc5c7d;
+            outline: none;
+        }
+        button {
+            background: linear-gradient(90deg, #fc5c7d 0%, #6a82fb 100%);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 32px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s, transform 0.1s;
+        }
+        button:hover {
+            background: linear-gradient(90deg, #6a82fb 0%, #fc5c7d 100%);
+            transform: translateY(-2px) scale(1.03);
+        }
+        #customOutput {
+            margin-top: 22px;
+            font-size: 1.1rem;
+            color: #333;
+            min-height: 28px;
+        }
+        #deleteAllSection {
+            margin-top: 36px;
+            border: 1px solid #c00;
+            background: #fff0f0;
+            padding: 18px;
+            border-radius: 8px;
+        }
+        #deleteAllBtn {
+            margin-top: 10px;
+            background: #c00;
+            color: #fff;
+        }
+        #deleteAllMsg {
+            margin-top: 10px;
+            color: #c00;
+            font-weight: bold;
+        }
+        #linksTableSection {
+            margin-top: 36px;
+            background: #f7f7fa;
+            border-radius: 8px;
+            padding: 18px 8px;
+            box-shadow: 0 2px 8px rgba(44,44,84,0.07);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 8px 6px;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: left;
+            font-size: 1rem;
+        }
+        th {
+            background: #f0eafd;
+            color: #4a4a8a;
+        }
+        td:last-child {
+            text-align: center;
+        }
+        .delBtn {
+            background: #c00;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 14px;
+            font-size: 0.98em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .delBtn:hover {
+            background: #a00;
+        }
+        #showLinksSection {
+            margin-top: 36px;
+            background: #fff0f0;
+            border: 1px solid #fc5c7d;
+            border-radius: 8px;
+            padding: 18px 8px;
+        }
+        #showLinksBtn {
+            background: #fc5c7d;
+            color: #fff;
+            margin-top: 8px;
+        }
+        #showLinksBtn:hover {
+            background: #6a82fb;
+        }
+        .footer {
+            margin-top: 60px;
+            text-align: center;
+        }
+        .footer a {
+            color: #fc5c7d;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        @media (max-width: 500px) {
+            .container {
+                max-width: 98vw;
+                padding: 18px 4vw 18px 4vw;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="brand">QuickLinkr</div>
+    <div class="container">
+        <h1>Owner Panel</h1>
+
+        <!-- Owner Auth Section -->
+        <section id="ownerAuthSection" style="margin-bottom:32px;">
+            <label for="mainOwnerPass" style="font-weight:bold;">Owner Password:</label>
+            <input type="password" id="mainOwnerPass" required>
+            <button id="activateOwnerBtn">Activate Owner Page</button>
+            <span id="ownerAuthMsg" style="margin-left:10px;color:#c00;"></span>
+        </section>
+
+        <div id="ownerContent" style="display:none;">
+            <!-- Create Custom Link -->
+            <section id="createSection" style="margin-bottom:32px;">
+                <h2 style="color:#4a4a8a;font-size:1.3em;margin-bottom:8px;">Create Custom Link</h2>
+                <form id="customForm">
+                    <label for="customKey">Custom Key:</label>
+                    <input type="text" id="customKey" pattern="[a-zA-Z0-9]{1,20}" required placeholder="e.g. youtube">
+                    <br>
+                    <label for="customUrl">Destination URL:</label>
+                    <input type="text" id="customUrl" required placeholder="https://example.com">
+                    <br>
+                    <button type="submit">Create Custom Link</button>
+                </form>
+                <div id="customOutput"></div>
+            </section>
+
+            <!-- Show & Manage All Redirects -->
+            <section id="showLinksSection" style="margin-bottom:32px;">
+                <h2 style="color:#4a4a8a;font-size:1.2em;margin-bottom:8px;">Show &amp; Manage All Redirects</h2>
+                <button id="showLinksBtn">Show All Links</button>
+                <div id="linksTableSection" style="display:none;">
+                    <table id="linksTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>URL</th>
+                                <th>Status</th>
+                                <th>Edit</th>
+                                <th>Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Links will be inserted here -->
+                        </tbody>
+                    </table>
+                    <div id="linksTableMsg" style="margin-top:10px;color:#c00;"></div>
+                </div>
+            </section>
+
+            <!-- Admin Controls -->
+            <section id="adminSection" style="margin-bottom:32px;background:#f7f7fa;border-radius:8px;padding:18px 8px;box-shadow:0 2px 8px rgba(44,44,84,0.07);">
+                <h2 style="color:#4a4a8a;font-size:1.1em;margin-bottom:8px;">Admin Controls</h2>
+                <button id="toggleCreateBtn">Loading...</button>
+                <span id="createStatus" style="margin-left:10px;"></span>
+                <br><br>
+                <button id="exportBtn">Export links.json</button>
+                <input type="file" id="importFile" style="display:none;">
+                <button id="importBtn">Import links.json</button>
+                <span id="adminMsg" style="margin-left:10px;color:#c00;"></span>
+            </section>
+
+            <!-- Edit links.json -->
+            <section id="editLinksSection" style="margin-bottom:32px;background:#fffbe6;border-radius:8px;padding:18px 8px;box-shadow:0 2px 8px rgba(44,44,84,0.07);">
+                <h2 style="color:#b8860b;font-size:1.1em;margin-bottom:8px;">Edit links.json (Advanced)</h2>
+                <button id="loadLinksBtn">Load</button>
+                <br>
+                <textarea id="linksJsonArea" style="width:98%;height:180px;margin-top:10px;font-family:monospace;font-size:1em;" disabled></textarea>
+                <br>
+                <button id="saveLinksBtn" disabled>Save</button>
+                <span id="editLinksMsg" style="margin-left:10px;color:#c00;"></span>
+            </section>
+
+            <!-- Delete All Redirects (at bottom, warning style) -->
+            <section id="deleteAllSection" style="margin-top:36px;border:2px solid #c00;background:#fff0f0;padding:18px;border-radius:8px;">
+                <h2 style="color:#c00;font-size:1.1em;margin-bottom:8px;">Delete All Redirects</h2>
+                <button id="deleteAllBtn" style="background:#c00;color:#fff;">Delete All Redirects</button>
+                <div id="deleteAllMsg"></div>
+            </section>
+        </div>
+
+        <div class="footer" style="margin-top:40px;">
+            <a href="/" style="font-weight:bold;">Back to main page</a>
+        </div>
+    </div>
+    <script>
+        // --- Owner Auth Logic ---
+        let ownerPassword = "";
+        const ownerContent = document.getElementById('ownerContent');
+        const ownerAuthSection = document.getElementById('ownerAuthSection');
+        const mainOwnerPass = document.getElementById('mainOwnerPass');
+        const activateOwnerBtn = document.getElementById('activateOwnerBtn');
+        const ownerAuthMsg = document.getElementById('ownerAuthMsg');
+
+        function setOwnerUI(enabled) {
+            ownerContent.style.display = enabled ? "" : "none";
+            ownerAuthSection.style.display = enabled ? "none" : "";
+        }
+
+        activateOwnerBtn.addEventListener('click', async () => {
+            const pass = mainOwnerPass.value.trim();
+            if (!pass) {
+                ownerAuthMsg.textContent = "Enter password.";
+                return;
+            }
+            // Test password by calling a protected endpoint
+            const res = await fetch('/api/get-create-enabled', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ownerPass: pass })
+            });
+            const data = await res.json();
+            if (data.enabled !== undefined) {
+                ownerPassword = pass;
+                setOwnerUI(true);
+                ownerAuthMsg.textContent = "";
+                // Set all password fields if any remain (for compatibility)
+                document.querySelectorAll('input[type="password"]').forEach(input => {
+                    if (input !== mainOwnerPass) input.value = pass;
+                });
+                updateCreateStatus();
+            } else {
+                ownerAuthMsg.textContent = "Invalid password.";
+            }
+        });
+
+        setOwnerUI(false);
+
+        // Helper to render a row
+        function renderLinkRow({id, url, status}, pass, refreshLinks) {
+            const tr = document.createElement('tr');
+
+            // ID cell
+            const tdId = document.createElement('td');
+            tdId.textContent = id;
+
+            // URL cell
+            const tdUrl = document.createElement('td');
+            tdUrl.textContent = url;
+
+            // Status cell
+            const tdStatus = document.createElement('td');
+            const statusBtn = document.createElement('button');
+            statusBtn.textContent = status === 'disabled' ? 'Disabled' : 'Active';
+            statusBtn.style.background = status === 'disabled' ? '#bbb' : '#4caf50';
+            statusBtn.style.color = '#fff';
+            statusBtn.style.borderRadius = '4px';
+            statusBtn.style.border = 'none';
+            statusBtn.style.padding = '4px 10px';
+            statusBtn.style.cursor = 'pointer';
+            statusBtn.onclick = async () => {
+                const newStatus = status === 'active' ? 'disabled' : 'active';
+                const res = await fetch('/api/update-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ownerPass: pass, id, update: { status: newStatus } })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    refreshLinks();
+                } else {
+                    alert(data.error || 'Failed to update status.');
+                }
+            };
+            tdStatus.appendChild(statusBtn);
+
+            // Edit cell
+            const tdEdit = document.createElement('td');
+            const editBtn = document.createElement('button');
+            editBtn.textContent = 'Edit';
+            editBtn.className = 'delBtn';
+            editBtn.style.background = '#ff9800';
+            editBtn.style.marginRight = '4px';
+            editBtn.onclick = () => {
+                // Replace cells with inputs
+                tdId.innerHTML = `<input type="text" value="${id}" style="width:80px;">`;
+                tdUrl.innerHTML = `<input type="text" value="${url}" style="width:180px;">`;
+                editBtn.style.display = 'none';
+                saveBtn.style.display = '';
+                cancelBtn.style.display = '';
+            };
+            tdEdit.appendChild(editBtn);
+
+            // Save/Cancel buttons (hidden by default)
+            const saveBtn = document.createElement('button');
+            saveBtn.textContent = 'Save';
+            saveBtn.className = 'delBtn';
+            saveBtn.style.background = '#4caf50';
+            saveBtn.style.display = 'none';
+            saveBtn.onclick = async () => {
+                const newId = tdId.querySelector('input').value.trim();
+                let newUrl = tdUrl.querySelector('input').value.trim();
+                if (!newId || !newUrl) {
+                    alert('ID and URL required.');
+                    return;
+                }
+                // Add https:// if missing
+                if (!/^https?:\/\//i.test(newUrl)) {
+                    newUrl = 'https://' + newUrl;
+                }
+                const res = await fetch('/api/update-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ownerPass: pass, id, update: { id: newId, url: newUrl } })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    refreshLinks();
+                } else {
+                    alert(data.error || 'Failed to update link.');
+                }
+            };
+            tdEdit.appendChild(saveBtn);
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.className = 'delBtn';
+            cancelBtn.style.background = '#bbb';
+            cancelBtn.style.display = 'none';
+            cancelBtn.onclick = () => {
+                refreshLinks();
+            };
+            tdEdit.appendChild(cancelBtn);
+
+            // Delete cell
+            const tdDel = document.createElement('td');
+            const delBtn = document.createElement('button');
+            delBtn.textContent = 'Delete';
+            delBtn.className = 'delBtn';
+            delBtn.onclick = async () => {
+                if (!confirm(`Delete redirect "${id}"?`)) return;
+                const delRes = await fetch('/api/delete-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ownerPass: pass, id })
+                });
+                const delData = await delRes.json();
+                if (delData.success) {
+                    tr.remove();
+                } else {
+                    msg.textContent = delData.error || 'Failed to delete.';
+                }
+            };
+            tdDel.appendChild(delBtn);
+
+            tr.appendChild(tdId);
+            tr.appendChild(tdUrl);
+            tr.appendChild(tdStatus);
+            tr.appendChild(tdEdit);
+            tr.appendChild(tdDel);
+
+            return tr;
+        }
+
+        // Show all links section
+        document.getElementById('showLinksBtn').addEventListener('click', async (event) => {
+            event.preventDefault();
+            const pass = ownerPassword;
+            if (!pass) {
+                alert('Please enter the owner password.');
+                return;
+            }
+            const res = await fetch('/api/list-links', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ownerPass: pass })
+            });
+            let data;
+            try {
+                data = await res.json();
+            } catch (e) {
+                data = {};
+            }
+            const tableSection = document.getElementById('linksTableSection');
+            const tbody = document.getElementById('linksTable').querySelector('tbody');
+            const msg = document.getElementById('linksTableMsg');
+            tbody.innerHTML = '';
+            msg.textContent = '';
+            let found = false;
+            if (data.success && data.links) {
+                tableSection.style.display = '';
+                Object.entries(data.links).forEach(([id, value]) => {
+                    let url, status;
+                    if (typeof value === 'object' && value !== null && 'url' in value) {
+                        url = value.url;
+                        status = value.status || 'active';
+                    } else if (typeof value === 'string') {
+                        url = value;
+                        status = 'active';
+                    } else {
+                        // skip invalid entries
+                        return;
+                    }
+                    found = true;
+                    const tr = renderLinkRow({id, url, status}, pass, () => document.getElementById('showLinksBtn').click());
+                    tbody.appendChild(tr);
+                });
+                if (!found) {
+                    msg.textContent = 'No redirects found.';
+                }
+            } else if (data.success && (!data.links || Object.keys(data.links).length === 0)) {
+                tableSection.style.display = '';
+                msg.textContent = 'No redirects found.';
+            } else {
+                tableSection.style.display = 'none';
+                msg.textContent = data && data.error ? data.error : 'Failed to load links.';
+            }
+        });
+
+        // Admin controls
+        const toggleCreateBtn = document.getElementById('toggleCreateBtn');
+        const createStatus = document.getElementById('createStatus');
+        const exportBtn = document.getElementById('exportBtn');
+        const importBtn = document.getElementById('importBtn');
+        const importFile = document.getElementById('importFile');
+        const adminMsg = document.getElementById('adminMsg');
+
+        async function updateCreateStatus() {
+            const pass = ownerPassword;
+            if (!pass) {
+                toggleCreateBtn.disabled = true;
+                toggleCreateBtn.textContent = "Enter password";
+                createStatus.textContent = "";
+                return;
+            }
+            toggleCreateBtn.disabled = true;
+            toggleCreateBtn.textContent = "Loading...";
+            createStatus.textContent = "";
+            const res = await fetch('/api/get-create-enabled', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ownerPass: pass })
+            });
+            const data = await res.json();
+            if (data.enabled !== undefined) {
+                toggleCreateBtn.disabled = false;
+                toggleCreateBtn.textContent = data.enabled ? "Disable Link Creation" : "Enable Link Creation";
+                createStatus.textContent = data.enabled ? "Link creation is ENABLED" : "Link creation is DISABLED";
+                createStatus.style.color = data.enabled ? "#4caf50" : "#c00";
+            } else {
+                toggleCreateBtn.disabled = true;
+                toggleCreateBtn.textContent = "Invalid password";
+                createStatus.textContent = "";
+            }
+        }
+
+        toggleCreateBtn.addEventListener('click', async () => {
+            const pass = ownerPassword;
+            if (!pass) return;
+            toggleCreateBtn.disabled = true;
+            toggleCreateBtn.textContent = "Please wait...";
+            const res = await fetch('/api/get-create-enabled', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ownerPass: pass })
+            });
+            const data = await res.json();
+            if (data.enabled !== undefined) {
+                const newEnabled = !data.enabled;
+                const res2 = await fetch('/api/set-create-enabled', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ownerPass: pass, enabled: newEnabled })
+                });
+                await updateCreateStatus();
+            } else {
+                toggleCreateBtn.textContent = "Invalid password";
+            }
+        });
+
+        exportBtn.addEventListener('click', async () => {
+            const pass = ownerPassword;
+            if (!pass) {
+                adminMsg.textContent = "Enter password first.";
+                return;
+            }
+            adminMsg.textContent = "";
+            const res = await fetch('/api/export-links', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ownerPass: pass })
+            });
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = "links.json";
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+            } else {
+                adminMsg.textContent = "Export failed (wrong password?)";
+            }
+        });
+
+        importBtn.addEventListener('click', () => {
+            importFile.click();
+        });
+
+        importFile.addEventListener('change', async () => {
+            const pass = ownerPassword;
+            if (!pass) {
+                adminMsg.textContent = "Enter password first.";
+                return;
+            }
+            const file = importFile.files[0];
+            if (!file) return;
+            const text = await file.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch {
+                adminMsg.textContent = "Invalid JSON file.";
+                return;
+            }
+            const res = await fetch('/api/import-links', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ownerPass: pass, data })
+            });
+            const resp = await res.json();
+            if (resp.success) {
+                adminMsg.textContent = "Import successful!";
+            } else {
+                adminMsg.textContent = resp.error || "Import failed.";
+            }
+        });
+
+        // Edit links.json section
+        const loadLinksBtn = document.getElementById('loadLinksBtn');
+        const saveLinksBtn = document.getElementById('saveLinksBtn');
+        const linksJsonArea = document.getElementById('linksJsonArea');
+        const editLinksMsg = document.getElementById('editLinksMsg');
+
+        loadLinksBtn.addEventListener('click', async () => {
+            const pass = ownerPassword;
+            if (!pass) {
+                editLinksMsg.textContent = "Enter password first.";
+                return;
+            }
+            editLinksMsg.textContent = "";
+            linksJsonArea.value = "";
+            linksJsonArea.disabled = true;
+            saveLinksBtn.disabled = true;
+            const res = await fetch('/api/export-links', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ownerPass: pass })
+            });
+            if (res.ok) {
+                const text = await res.text();
+                linksJsonArea.value = text;
+                linksJsonArea.disabled = false;
+                saveLinksBtn.disabled = false;
+                editLinksMsg.textContent = "Loaded. Edit and click Save.";
+            } else {
+                editLinksMsg.textContent = "Failed to load (wrong password?)";
+            }
+        });
+
+        saveLinksBtn.addEventListener('click', async () => {
+            const pass = ownerPassword;
+            if (!pass) {
+                editLinksMsg.textContent = "Enter password first.";
+                return;
+            }
+            let data;
+            try {
+                data = JSON.parse(linksJsonArea.value);
+            } catch {
+                editLinksMsg.textContent = "Invalid JSON!";
+                return;
+            }
+            const res = await fetch('/api/import-links', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ownerPass: pass, data })
+            });
+            const resp = await res.json();
+            if (resp.success) {
+                editLinksMsg.textContent = "Saved!";
+            } else {
+                editLinksMsg.textContent = resp.error || "Save failed.";
+            }
+        });
+    </script>
+</body>
+</html>
