@@ -174,7 +174,7 @@
             <input type="text" id="customKey" pattern="[a-zA-Z0-9]{1,20}" required placeholder="e.g. youtube">
             <br>
             <label for="customUrl">Destination URL:</label>
-            <input type="url" id="customUrl" required placeholder="https://example.com">
+            <input type="text" id="customUrl" required placeholder="https://example.com">
             <br>
             <label for="ownerPass">Owner Password:</label>
             <input type="password" id="ownerPass" required>
@@ -202,6 +202,8 @@
                         <tr>
                             <th>ID</th>
                             <th>URL</th>
+                            <th>Status</th>
+                            <th>Edit</th>
                             <th>Delete</th>
                         </tr>
                     </thead>
@@ -220,8 +222,12 @@
         document.getElementById('customForm').addEventListener('submit', async (event) => {
             event.preventDefault();
             const key = document.getElementById('customKey').value.trim();
-            const url = document.getElementById('customUrl').value.trim();
+            let url = document.getElementById('customUrl').value.trim();
             const pass = document.getElementById('ownerPass').value;
+            // Add https:// if missing
+            if (!/^https?:\/\//i.test(url)) {
+                url = 'https://' + url;
+            }
             const res = await fetch('/api/shorten', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -267,6 +273,132 @@
             }
         });
 
+        // Helper to render a row
+        function renderLinkRow({id, url, status}, pass, refreshLinks) {
+            const tr = document.createElement('tr');
+
+            // ID cell
+            const tdId = document.createElement('td');
+            tdId.textContent = id;
+
+            // URL cell
+            const tdUrl = document.createElement('td');
+            tdUrl.textContent = url;
+
+            // Status cell
+            const tdStatus = document.createElement('td');
+            const statusBtn = document.createElement('button');
+            statusBtn.textContent = status === 'disabled' ? 'Disabled' : 'Active';
+            statusBtn.style.background = status === 'disabled' ? '#bbb' : '#4caf50';
+            statusBtn.style.color = '#fff';
+            statusBtn.style.borderRadius = '4px';
+            statusBtn.style.border = 'none';
+            statusBtn.style.padding = '4px 10px';
+            statusBtn.style.cursor = 'pointer';
+            statusBtn.onclick = async () => {
+                const newStatus = status === 'active' ? 'disabled' : 'active';
+                const res = await fetch('/api/update-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ownerPass: pass, id, update: { status: newStatus } })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    refreshLinks();
+                } else {
+                    alert(data.error || 'Failed to update status.');
+                }
+            };
+            tdStatus.appendChild(statusBtn);
+
+            // Edit cell
+            const tdEdit = document.createElement('td');
+            const editBtn = document.createElement('button');
+            editBtn.textContent = 'Edit';
+            editBtn.className = 'delBtn';
+            editBtn.style.background = '#ff9800';
+            editBtn.style.marginRight = '4px';
+            editBtn.onclick = () => {
+                // Replace cells with inputs
+                tdId.innerHTML = `<input type="text" value="${id}" style="width:80px;">`;
+                tdUrl.innerHTML = `<input type="text" value="${url}" style="width:180px;">`;
+                editBtn.style.display = 'none';
+                saveBtn.style.display = '';
+                cancelBtn.style.display = '';
+            };
+            tdEdit.appendChild(editBtn);
+
+            // Save/Cancel buttons (hidden by default)
+            const saveBtn = document.createElement('button');
+            saveBtn.textContent = 'Save';
+            saveBtn.className = 'delBtn';
+            saveBtn.style.background = '#4caf50';
+            saveBtn.style.display = 'none';
+            saveBtn.onclick = async () => {
+                const newId = tdId.querySelector('input').value.trim();
+                let newUrl = tdUrl.querySelector('input').value.trim();
+                if (!newId || !newUrl) {
+                    alert('ID and URL required.');
+                    return;
+                }
+                // Add https:// if missing
+                if (!/^https?:\/\//i.test(newUrl)) {
+                    newUrl = 'https://' + newUrl;
+                }
+                const res = await fetch('/api/update-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ownerPass: pass, id, update: { id: newId, url: newUrl } })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    refreshLinks();
+                } else {
+                    alert(data.error || 'Failed to update link.');
+                }
+            };
+            tdEdit.appendChild(saveBtn);
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.className = 'delBtn';
+            cancelBtn.style.background = '#bbb';
+            cancelBtn.style.display = 'none';
+            cancelBtn.onclick = () => {
+                refreshLinks();
+            };
+            tdEdit.appendChild(cancelBtn);
+
+            // Delete cell
+            const tdDel = document.createElement('td');
+            const delBtn = document.createElement('button');
+            delBtn.textContent = 'Delete';
+            delBtn.className = 'delBtn';
+            delBtn.onclick = async () => {
+                if (!confirm(`Delete redirect "${id}"?`)) return;
+                const delRes = await fetch('/api/delete-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ownerPass: pass, id })
+                });
+                const delData = await delRes.json();
+                if (delData.success) {
+                    tr.remove();
+                } else {
+                    msg.textContent = delData.error || 'Failed to delete.';
+                }
+            };
+            tdDel.appendChild(delBtn);
+
+            tr.appendChild(tdId);
+            tr.appendChild(tdUrl);
+            tr.appendChild(tdStatus);
+            tr.appendChild(tdEdit);
+            tr.appendChild(tdDel);
+
+            return tr;
+        }
+
         // Show all links section
         document.getElementById('showLinksBtn').addEventListener('click', async (event) => {
             event.preventDefault();
@@ -288,34 +420,17 @@
             msg.textContent = '';
             if (data.success && data.links) {
                 tableSection.style.display = '';
-                Object.entries(data.links).forEach(([id, url]) => {
-                    const tr = document.createElement('tr');
-                    const tdId = document.createElement('td');
-                    tdId.textContent = id;
-                    const tdUrl = document.createElement('td');
-                    tdUrl.textContent = url;
-                    const tdDel = document.createElement('td');
-                    const delBtn = document.createElement('button');
-                    delBtn.textContent = 'Delete';
-                    delBtn.className = 'delBtn';
-                    delBtn.onclick = async () => {
-                        if (!confirm(`Delete redirect "${id}"?`)) return;
-                        const delRes = await fetch('/api/delete-link', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ ownerPass: pass, id })
-                        });
-                        const delData = await delRes.json();
-                        if (delData.success) {
-                            tr.remove();
-                        } else {
-                            msg.textContent = delData.error || 'Failed to delete.';
-                        }
-                    };
-                    tdDel.appendChild(delBtn);
-                    tr.appendChild(tdId);
-                    tr.appendChild(tdUrl);
-                    tr.appendChild(tdDel);
+                // data.links: { id: { url, status } }
+                Object.entries(data.links).forEach(([id, value]) => {
+                    let url, status;
+                    if (typeof value === 'object') {
+                        url = value.url;
+                        status = value.status || 'active';
+                    } else {
+                        url = value;
+                        status = 'active';
+                    }
+                    const tr = renderLinkRow({id, url, status}, pass, () => document.getElementById('showLinksBtn').click());
                     tbody.appendChild(tr);
                 });
                 if (Object.keys(data.links).length === 0) {

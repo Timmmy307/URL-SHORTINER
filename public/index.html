@@ -32,7 +32,7 @@
             font-weight: 500;
             color: #444;
         }
-        input[type="url"] {
+        input[type="text"] {
             width: 90%;
             padding: 10px;
             margin: 10px 0 18px 0;
@@ -41,7 +41,7 @@
             font-size: 1rem;
             transition: border 0.2s;
         }
-        input[type="url"]:focus {
+        input[type="text"]:focus {
             border: 1.5px solid #6a82fb;
             outline: none;
         }
@@ -109,9 +109,9 @@
         <h1>Shorten Your Link</h1>
         <form id="linkForm" autocomplete="off">
             <label for="url">Paste your long URL below:</label><br>
-            <input type="url" id="url" required placeholder="https://example.com">
+            <input type="text" id="url" required placeholder="https://example.com">
             <br>
-            <button type="submit">Create Short Link</button>
+            <button type="submit" id="submitBtn">Create Short Link</button>
         </form>
         <div id="output"></div>
     </div>
@@ -121,21 +121,43 @@
     <script>
         document.getElementById('linkForm').addEventListener('submit', async (event) => {
             event.preventDefault();
-            const urlInput = document.getElementById('url').value.trim();
+            let urlInput = document.getElementById('url').value.trim();
             if (!urlInput) {
                 alert('Please enter a valid URL.');
                 return;
             }
+            // Add https:// if missing
+            if (!/^https?:\/\//i.test(urlInput)) {
+                urlInput = 'https://' + urlInput;
+            }
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = "Please wait...";
             const res = await fetch('/api/shorten', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url: urlInput })
             });
             const data = await res.json();
+            btn.disabled = false;
+            btn.textContent = "Create Short Link";
             if (data.shortUrl) {
                 const urlObj = new URL(data.shortUrl, window.location.origin);
                 document.getElementById('output').innerHTML = `
                     <span>Short link created:</span><br>
+                    <a href="${urlObj.pathname}" target="_blank" style="font-size:1.2em;font-weight:bold;color:#6a82fb;">${urlObj.pathname}</a>
+                    <button id="copyBtn" style="margin-left:10px;padding:4px 12px;font-size:0.95em;">Copy</button>
+                `;
+                document.getElementById('copyBtn').onclick = function() {
+                    navigator.clipboard.writeText(urlObj.pathname);
+                    this.textContent = "Copied!";
+                    setTimeout(() => this.textContent = "Copy", 1200);
+                };
+            } else if (data.error && data.shortUrl) {
+                // Duplicate URL
+                const urlObj = new URL(data.shortUrl, window.location.origin);
+                document.getElementById('output').innerHTML = `
+                    <span>This URL is already shortened:</span><br>
                     <a href="${urlObj.pathname}" target="_blank" style="font-size:1.2em;font-weight:bold;color:#6a82fb;">${urlObj.pathname}</a>
                     <button id="copyBtn" style="margin-left:10px;padding:4px 12px;font-size:0.95em;">Copy</button>
                 `;

@@ -39,9 +39,25 @@ app.post('/api/shorten', (req, res) => {
         return res.status(400).json({ error: 'Invalid URL' });
     }
     let db = loadDB();
+
+    // Prevent duplicate URLs (for non-custom codes, i.e., not owner)
+    if (!customCode) {
+        for (const [code, entry] of Object.entries(db)) {
+            // Only check non-custom (non-owner) links
+            // Assume owner links always have customCode (and thus are not auto-generated codes)
+            let entryObj = typeof entry === "string" ? { url: entry } : entry;
+            // If this code is a custom code, skip it
+            // Heuristic: custom codes are not 5 chars (default generated codes are 5 chars)
+            if (code.length !== 5) continue;
+            if (entryObj.url === url) {
+                const baseUrl = req.protocol + '://' + req.get('host');
+                return res.status(409).json({ error: 'This URL is already shortened.', shortUrl: `${baseUrl}/${code}` });
+            }
+        }
+    }
+
     let code;
     if (customCode) {
-        // Owner password check (now server-side)
         if (ownerPass !== OWNER_PASSWORD) {
             return res.status(403).json({ error: 'Invalid owner password' });
         }
@@ -50,14 +66,12 @@ app.post('/api/shorten', (req, res) => {
             return res.status(409).json({ error: 'Custom code already exists' });
         }
     } else {
-        // Generate unique code
         do {
             code = generateCode();
         } while (db[code]);
     }
-    db[code] = url;
+    db[code] = { url, status: "active" };
     saveDB(db);
-    // Use the actual host and protocol from the request
     const baseUrl = req.protocol + '://' + req.get('host');
     res.json({ shortUrl: `${baseUrl}/${code}` });
 });
@@ -80,6 +94,40 @@ app.post('/api/list-links', (req, res) => {
     }
     const db = loadDB();
     res.json({ success: true, links: db });
+});
+
+// API to update a link (edit id, url, or status)
+app.post('/api/update-link', (req, res) => {
+    const { ownerPass, id, update } = req.body;
+    if (ownerPass !== OWNER_PASSWORD) {
+        return res.status(403).json({ error: 'Invalid owner password' });
+    }
+    if (!id || !update) {
+        return res.status(400).json({ error: 'Missing id or update' });
+    }
+    let db = loadDB();
+    if (!(id in db)) {
+        return res.status(404).json({ error: 'ID not found' });
+    }
+    let link = db[id];
+    // If old format, upgrade to object
+    if (typeof link === "string") link = { url: link, status: "active" };
+    // Update fields
+    if (update.url) link.url = update.url;
+    if (update.status) link.status = update.status;
+    let newId = id;
+    if (update.id && update.id !== id) {
+        if (db[update.id]) {
+            return res.status(409).json({ error: 'New ID already exists' });
+        }
+        db[update.id] = link;
+        delete db[id];
+        newId = update.id;
+    } else {
+        db[id] = link;
+    }
+    saveDB(db);
+    res.json({ success: true, id: newId });
 });
 
 // API to delete a single link (owner only)
@@ -118,13 +166,24 @@ app.get('/:code', (req, res, next) => {
     ) return next();
 
     const db = loadDB();
-    const url = db[code];
-    if (!url) {
+    let entry = db[code];
+    // Support old format
+    if (typeof entry === "string") entry = { url: entry, status: "active" };
+    if (!entry) {
         // Optional: log for debugging
         console.log(`[404] Code not found: ${code}`);
         return res.status(404).send('<h1>Link not found.</h1>');
     }
-
+    if (entry.status === "disabled") {
+        // Redirect to main page after 5 seconds
+        return res.status(403).send(`
+            <h1>This link is disabled.</h1>
+            <p>You will be redirected to the <a href="/">main page</a> in 5 seconds.</p>
+            <script>
+                setTimeout(function(){ window.location.href = "/"; }, 5000);
+            </script>
+        `);
+    }
     if ('tellurl' in req.query) {
         res.send(`
             <!DOCTYPE html>
@@ -149,8 +208,8 @@ app.get('/:code', (req, res, next) => {
         `);
     } else {
         // Optional: log for debugging
-        console.log(`[REDIRECT] ${code} -> ${url}`);
-        res.redirect(url);
+        console.log(`[REDIRECT] ${code} -> ${entry.url}`);
+        res.redirect(entry.url);
     }
 });
 
