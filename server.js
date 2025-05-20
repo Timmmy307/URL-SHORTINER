@@ -7,6 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DB_FILE = path.join(__dirname, 'links.json');
+const CREATE_ENABLED_FILE = path.join(__dirname, 'create_enabled.json');
 
 app.use(express.static(PUBLIC_DIR));
 app.use(bodyParser.json());
@@ -32,11 +33,61 @@ function saveDB(db) {
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 }
 
+// Helper for global creation toggle
+function isCreateEnabled() {
+    if (!fs.existsSync(CREATE_ENABLED_FILE)) return true;
+    try {
+        return JSON.parse(fs.readFileSync(CREATE_ENABLED_FILE, 'utf8')).enabled !== false;
+    } catch {
+        return true;
+    }
+}
+function setCreateEnabled(enabled) {
+    fs.writeFileSync(CREATE_ENABLED_FILE, JSON.stringify({ enabled }));
+}
+
+// API: Get creation enabled status (owner only)
+app.post('/api/get-create-enabled', (req, res) => {
+    const { ownerPass } = req.body;
+    if (ownerPass !== OWNER_PASSWORD) return res.status(403).json({ error: 'Invalid owner password' });
+    res.json({ enabled: isCreateEnabled() });
+});
+
+// API: Set creation enabled status (owner only)
+app.post('/api/set-create-enabled', (req, res) => {
+    const { ownerPass, enabled } = req.body;
+    if (ownerPass !== OWNER_PASSWORD) return res.status(403).json({ error: 'Invalid owner password' });
+    setCreateEnabled(!!enabled);
+    res.json({ success: true, enabled: !!enabled });
+});
+
+// API: Export links.json (owner only)
+app.post('/api/export-links', (req, res) => {
+    const { ownerPass } = req.body;
+    if (ownerPass !== OWNER_PASSWORD) return res.status(403).json({ error: 'Invalid owner password' });
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="links.json"');
+    res.send(fs.readFileSync(DB_FILE, 'utf8'));
+});
+
+// API: Import links.json (owner only)
+app.post('/api/import-links', (req, res) => {
+    const { ownerPass, data } = req.body;
+    if (ownerPass !== OWNER_PASSWORD) return res.status(403).json({ error: 'Invalid owner password' });
+    if (!data || typeof data !== 'object') return res.status(400).json({ error: 'Invalid data' });
+    saveDB(data);
+    res.json({ success: true });
+});
+
 // API to create a new short link
 app.post('/api/shorten', (req, res) => {
     let { url, customCode, ownerPass } = req.body;
     if (!url || !/^https?:\/\//.test(url)) {
         return res.status(400).json({ error: 'Invalid URL' });
+    }
+    // Only allow creation if enabled, unless owner
+    if (!customCode && !isCreateEnabled()) {
+        return res.status(403).json({ error: 'Link creation is currently disabled by the owner.' });
     }
     let db = loadDB();
 
