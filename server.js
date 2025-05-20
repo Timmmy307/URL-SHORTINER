@@ -11,7 +11,7 @@ const DB_FILE = path.join(__dirname, 'links.json');
 app.use(express.static(PUBLIC_DIR));
 app.use(bodyParser.json());
 
-const OWNER_PASSWORD = 'Timour'; // <-- Set your real password here
+const OWNER_PASSWORD = 'sircoownsthis@2025'; // <-- Set your real password here
 
 // Helper to generate random 5-char code
 function generateCode(length = 5) {
@@ -58,7 +58,7 @@ app.post('/api/shorten', (req, res) => {
 
     let code;
     if (customCode) {
-        if (ownerPass !== OWNER_PASSWORD) {
+        if ((ownerPass || '').trim().toLowerCase() !== OWNER_PASSWORD.toLowerCase()) {
             return res.status(403).json({ error: 'Invalid owner password' });
         }
         code = customCode;
@@ -79,7 +79,7 @@ app.post('/api/shorten', (req, res) => {
 // API to delete all redirects (owner only)
 app.post('/api/delete-all', (req, res) => {
     const { ownerPass } = req.body;
-    if (ownerPass !== OWNER_PASSWORD) {
+    if ((ownerPass || '').trim().toLowerCase() !== OWNER_PASSWORD.toLowerCase()) {
         return res.status(403).json({ error: 'Invalid owner password' });
     }
     saveDB({});
@@ -89,7 +89,9 @@ app.post('/api/delete-all', (req, res) => {
 // API to list all links (owner only)
 app.post('/api/list-links', (req, res) => {
     const { ownerPass } = req.body;
-    if (ownerPass !== OWNER_PASSWORD) {
+    // Debug log:
+    console.log('Received ownerPass:', ownerPass, 'Expected:', OWNER_PASSWORD);
+    if ((ownerPass || '').trim().toLowerCase() !== OWNER_PASSWORD.toLowerCase()) {
         return res.status(403).json({ error: 'Invalid owner password' });
     }
     const db = loadDB();
@@ -99,7 +101,7 @@ app.post('/api/list-links', (req, res) => {
 // API to update a link (edit id, url, or status)
 app.post('/api/update-link', (req, res) => {
     const { ownerPass, id, update } = req.body;
-    if (ownerPass !== OWNER_PASSWORD) {
+    if ((ownerPass || '').trim().toLowerCase() !== OWNER_PASSWORD.toLowerCase()) {
         return res.status(403).json({ error: 'Invalid owner password' });
     }
     if (!id || !update) {
@@ -133,7 +135,7 @@ app.post('/api/update-link', (req, res) => {
 // API to delete a single link (owner only)
 app.post('/api/delete-link', (req, res) => {
     const { ownerPass, id } = req.body;
-    if (ownerPass !== OWNER_PASSWORD) {
+    if ((ownerPass || '').trim().toLowerCase() !== OWNER_PASSWORD.toLowerCase()) {
         return res.status(403).json({ error: 'Invalid owner password' });
     }
     if (!id) {
@@ -203,6 +205,30 @@ app.get('/:code', (req, res, next) => {
                     Click the button below to go to your short link:<br>
                     <a class="button" href="/${code}">/${code}</a>
                 </div>
+            </body>
+            </html>
+        `);
+    } else if ('showurl' in req.query) {
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Short Link Destination</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body { font-family: Arial, sans-serif; text-align: center; margin-top: 60px; }
+                    .url-box { margin: 20px auto; padding: 10px; border: 1px solid #ccc; display: inline-block; word-break: break-all; }
+                    a.button { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #28a745; color: #fff; text-decoration: none; border-radius: 4px; }
+                </style>
+            </head>
+            <body>
+                <h1>Short Link Information</h1>
+                <div class="url-box">
+                    <strong>The short link <code>/${code}</code> points to:</strong><br>
+                    <span style="color:#007bff">${entry.url.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>
+                </div>
+                <br>
+                <a class="button" href="${entry.url}" rel="noopener noreferrer">Go to Destination</a>
             </body>
             </html>
         `);
