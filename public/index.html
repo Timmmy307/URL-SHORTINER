@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickLinkr - Simple URL Shortener</title>
+    <style>
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #6a82fb 0%, #fc5c7d 100%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+        .container {
+            background: #fff;
+            max-width: 400px;
+            margin: 60px auto 0 auto;
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(44,44,84,0.18);
+            padding: 36px 32px 28px 32px;
+            text-align: center;
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 2.2rem;
+            color: #4a4a8a;
+            letter-spacing: 1px;
+        }
+        label {
+            font-weight: 500;
+            color: #444;
+        }
+        input[type="url"] {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0 18px 0;
+            border: 1px solid #bdbdbd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border 0.2s;
+        }
+        input[type="url"]:focus {
+            border: 1.5px solid #6a82fb;
+            outline: none;
+        }
+        button {
+            background: linear-gradient(90deg, #6a82fb 0%, #fc5c7d 100%);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 32px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s, transform 0.1s;
+        }
+        button:hover {
+            background: linear-gradient(90deg, #fc5c7d 0%, #6a82fb 100%);
+            transform: translateY(-2px) scale(1.03);
+        }
+        #output {
+            margin-top: 22px;
+            font-size: 1.1rem;
+            color: #333;
+            min-height: 28px;
+        }
+        .brand {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #fff;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 8px rgba(44,44,84,0.18);
+        }
+        footer {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background: rgba(255,255,255,0.97);
+            border-top: 1px solid #ccc;
+            text-align: center;
+            padding: 14px 0 12px 0;
+            z-index: 100;
+            font-size: 1rem;
+        }
+        footer a {
+            color: #fc5c7d;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        footer a:hover {
+            text-decoration: underline;
+        }
+        @media (max-width: 500px) {
+            .container {
+                max-width: 98vw;
+                padding: 18px 4vw 18px 4vw;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="brand">QuickLinkr</div>
+    <div class="container">
+        <h1>Shorten Your Link</h1>
+        <form id="linkForm" autocomplete="off">
+            <label for="url">Paste your long URL below:</label><br>
+            <input type="url" id="url" required placeholder="https://example.com">
+            <br>
+            <button type="submit">Create Short Link</button>
+        </form>
+        <div id="output"></div>
+    </div>
+    <footer>
+        🚀 If you are the owner, <a href="/owner" id="owner-link">click here</a> to create custom links.
+    </footer>
+    <script>
+        document.getElementById('linkForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const urlInput = document.getElementById('url').value.trim();
+            if (!urlInput) {
+                alert('Please enter a valid URL.');
+                return;
+            }
+            const res = await fetch('/api/shorten', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: urlInput })
+            });
+            const data = await res.json();
+            if (data.shortUrl) {
+                const urlObj = new URL(data.shortUrl, window.location.origin);
+                document.getElementById('output').innerHTML = `
+                    <span>Short link created:</span><br>
+                    <a href="${urlObj.pathname}" target="_blank" style="font-size:1.2em;font-weight:bold;color:#6a82fb;">${urlObj.pathname}</a>
+                    <button id="copyBtn" style="margin-left:10px;padding:4px 12px;font-size:0.95em;">Copy</button>
+                `;
+                document.getElementById('copyBtn').onclick = function() {
+                    navigator.clipboard.writeText(urlObj.pathname);
+                    this.textContent = "Copied!";
+                    setTimeout(() => this.textContent = "Copy", 1200);
+                };
+            } else {
+                document.getElementById('output').textContent = data.error || 'Error creating link.';
+            }
+        });
+    </script>
+</body>
+</html>

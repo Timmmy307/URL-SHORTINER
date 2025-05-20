@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>URL Shortener</title>
+    <style>
+        /* ...existing code... */
+    </style>
 </head>
 <body>
     <h1>Create Your Short Link</h1>
@@ -14,21 +17,58 @@
         <button type="submit">Create Short Link</button>
     </form>
     <p id="output"></p>
+    <footer>
+        <hr>
+        <p>If you are the owner, <a href="/owner" id="owner-link" style="font-weight:bold;">click here</a> to create custom links.</p>
+    </footer>
     <script>
-        document.getElementById('linkForm').addEventListener('submit', (event) => {
+        // Generate a random 5-character code
+        function generateCode(length = 5) {
+            const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let code = '';
+            for (let i = 0; i < length; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return code;
+        }
+
+        // Download JSON file (simulate saving for GitHub Pages)
+        function downloadJSON(obj, filename) {
+            const blob = new Blob([JSON.stringify(obj, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Helper to get current protocol and host (avoids localhost if deployed)
+        function getBaseUrl() {
+            return window.location.protocol + '//' + window.location.host;
+        }
+
+        // Handle public short link creation
+        document.getElementById('linkForm').addEventListener('submit', async (event) => {
             event.preventDefault();
-
             const urlInput = document.getElementById('url').value.trim();
-
             if (!urlInput) {
                 alert('Please enter a valid URL.');
                 return;
             }
-
-            // Create a Base64-encoded short link
-            const encodedUrl = btoa(urlInput);
-            const shortLink = `${window.location.origin}/l/?l=${encodedUrl}`;
-            document.getElementById('output').textContent = `Short link created: ${shortLink}`;
+            const res = await fetch('/api/shorten', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: urlInput })
+            });
+            const data = await res.json();
+            if (data.shortUrl) {
+                // Show only the relative path
+                const urlObj = new URL(data.shortUrl, window.location.origin);
+                document.getElementById('output').innerHTML = `Short link created: <a href="${urlObj.pathname}" target="_blank">${urlObj.pathname}</a>`;
+            } else {
+                document.getElementById('output').textContent = data.error || 'Error creating link.';
+            }
         });
     </script>
 </body>

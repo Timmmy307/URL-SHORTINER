@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickLinkr Owner Panel</title>
+    <style>
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #fc5c7d 0%, #6a82fb 100%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+        .brand {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #fff;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 8px rgba(44,44,84,0.18);
+        }
+        .container {
+            background: #fff;
+            max-width: 420px;
+            margin: 60px auto 0 auto;
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(44,44,84,0.18);
+            padding: 36px 32px 28px 32px;
+            text-align: center;
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 2.1rem;
+            color: #4a4a8a;
+            letter-spacing: 1px;
+        }
+        label {
+            font-weight: 500;
+            color: #444;
+        }
+        input[type="text"], input[type="url"], input[type="password"] {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0 18px 0;
+            border: 1px solid #bdbdbd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border 0.2s;
+        }
+        input[type="text"]:focus, input[type="url"]:focus, input[type="password"]:focus {
+            border: 1.5px solid #fc5c7d;
+            outline: none;
+        }
+        button {
+            background: linear-gradient(90deg, #fc5c7d 0%, #6a82fb 100%);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 32px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s, transform 0.1s;
+        }
+        button:hover {
+            background: linear-gradient(90deg, #6a82fb 0%, #fc5c7d 100%);
+            transform: translateY(-2px) scale(1.03);
+        }
+        #customOutput {
+            margin-top: 22px;
+            font-size: 1.1rem;
+            color: #333;
+            min-height: 28px;
+        }
+        #deleteAllSection {
+            margin-top: 36px;
+            border: 1px solid #c00;
+            background: #fff0f0;
+            padding: 18px;
+            border-radius: 8px;
+        }
+        #deleteAllBtn {
+            margin-top: 10px;
+            background: #c00;
+            color: #fff;
+        }
+        #deleteAllMsg {
+            margin-top: 10px;
+            color: #c00;
+            font-weight: bold;
+        }
+        #linksTableSection {
+            margin-top: 36px;
+            background: #f7f7fa;
+            border-radius: 8px;
+            padding: 18px 8px;
+            box-shadow: 0 2px 8px rgba(44,44,84,0.07);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 8px 6px;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: left;
+            font-size: 1rem;
+        }
+        th {
+            background: #f0eafd;
+            color: #4a4a8a;
+        }
+        td:last-child {
+            text-align: center;
+        }
+        .delBtn {
+            background: #c00;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 14px;
+            font-size: 0.98em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .delBtn:hover {
+            background: #a00;
+        }
+        #showLinksSection {
+            margin-top: 36px;
+            background: #fff0f0;
+            border: 1px solid #fc5c7d;
+            border-radius: 8px;
+            padding: 18px 8px;
+        }
+        #showLinksBtn {
+            background: #fc5c7d;
+            color: #fff;
+            margin-top: 8px;
+        }
+        #showLinksBtn:hover {
+            background: #6a82fb;
+        }
+        .footer {
+            margin-top: 60px;
+            text-align: center;
+        }
+        .footer a {
+            color: #fc5c7d;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        @media (max-width: 500px) {
+            .container {
+                max-width: 98vw;
+                padding: 18px 4vw 18px 4vw;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="brand">QuickLinkr</div>
+    <div class="container">
+        <h1>Owner Panel</h1>
+        <form id="customForm">
+            <label for="customKey">Custom Key:</label>
+            <input type="text" id="customKey" pattern="[a-zA-Z0-9]{1,20}" required placeholder="e.g. youtube">
+            <br>
+            <label for="customUrl">Destination URL:</label>
+            <input type="url" id="customUrl" required placeholder="https://example.com">
+            <br>
+            <label for="ownerPass">Owner Password:</label>
+            <input type="password" id="ownerPass" required>
+            <br>
+            <button type="submit">Create Custom Link</button>
+        </form>
+        <div id="customOutput"></div>
+        <div id="deleteAllSection">
+            <strong>Delete All Redirects</strong><br>
+            <label for="deletePass">Owner Password:</label>
+            <input type="password" id="deletePass" required>
+            <br>
+            <button id="deleteAllBtn">Delete All Redirects</button>
+            <div id="deleteAllMsg"></div>
+        </div>
+        <div id="showLinksSection">
+            <strong>Show &amp; Manage All Redirects</strong><br>
+            <label for="showLinksPass">Owner Password:</label>
+            <input type="password" id="showLinksPass" required>
+            <br>
+            <button id="showLinksBtn">Show All Links</button>
+            <div id="linksTableSection" style="display:none;">
+                <table id="linksTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>URL</th>
+                            <th>Delete</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Links will be inserted here -->
+                    </tbody>
+                </table>
+                <div id="linksTableMsg" style="margin-top:10px;color:#c00;"></div>
+            </div>
+        </div>
+        <div class="footer">
+            <a href="/" style="font-weight:bold;">Back to main page</a>
+        </div>
+    </div>
+    <script>
+        document.getElementById('customForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const key = document.getElementById('customKey').value.trim();
+            const url = document.getElementById('customUrl').value.trim();
+            const pass = document.getElementById('ownerPass').value;
+            const res = await fetch('/api/shorten', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, customCode: key, ownerPass: pass })
+            });
+            const data = await res.json();
+            if (data.shortUrl) {
+                const urlObj = new URL(data.shortUrl, window.location.origin);
+                document.getElementById('customOutput').innerHTML = `
+                    Custom link created:<br>
+                    <a href="${urlObj.pathname}" target="_blank" style="font-size:1.2em;font-weight:bold;color:#fc5c7d;">${urlObj.pathname}</a>
+                    <button id="copyBtn" style="margin-left:10px;padding:4px 12px;font-size:0.95em;">Copy</button>
+                `;
+                document.getElementById('copyBtn').onclick = function() {
+                    navigator.clipboard.writeText(urlObj.pathname);
+                    this.textContent = "Copied!";
+                    setTimeout(() => this.textContent = "Copy", 1200);
+                };
+            } else {
+                document.getElementById('customOutput').textContent = data.error || 'Error creating custom link.';
+            }
+        });
+
+        document.getElementById('deleteAllBtn').addEventListener('click', async (event) => {
+            event.preventDefault();
+            const confirmed = confirm('Are you sure you want to delete ALL redirects? This cannot be undone.');
+            if (!confirmed) return;
+            const pass = document.getElementById('deletePass').value;
+            if (!pass) {
+                document.getElementById('deleteAllMsg').textContent = 'Please enter the owner password.';
+                return;
+            }
+            const res = await fetch('/api/delete-all', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ownerPass: pass })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('deleteAllMsg').textContent = 'All redirects deleted!';
+            } else {
+                document.getElementById('deleteAllMsg').textContent = data.error || 'Failed to delete redirects.';
+            }
+        });
+
+        // Show all links section
+        document.getElementById('showLinksBtn').addEventListener('click', async (event) => {
+            event.preventDefault();
+            const pass = document.getElementById('showLinksPass').value;
+            if (!pass) {
+                alert('Please enter the owner password.');
+                return;
+            }
+            const res = await fetch('/api/list-links', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ownerPass: pass })
+            });
+            const data = await res.json();
+            const tableSection = document.getElementById('linksTableSection');
+            const tbody = document.getElementById('linksTable').querySelector('tbody');
+            const msg = document.getElementById('linksTableMsg');
+            tbody.innerHTML = '';
+            msg.textContent = '';
+            if (data.success && data.links) {
+                tableSection.style.display = '';
+                Object.entries(data.links).forEach(([id, url]) => {
+                    const tr = document.createElement('tr');
+                    const tdId = document.createElement('td');
+                    tdId.textContent = id;
+                    const tdUrl = document.createElement('td');
+                    tdUrl.textContent = url;
+                    const tdDel = document.createElement('td');
+                    const delBtn = document.createElement('button');
+                    delBtn.textContent = 'Delete';
+                    delBtn.className = 'delBtn';
+                    delBtn.onclick = async () => {
+                        if (!confirm(`Delete redirect "${id}"?`)) return;
+                        const delRes = await fetch('/api/delete-link', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ownerPass: pass, id })
+                        });
+                        const delData = await delRes.json();
+                        if (delData.success) {
+                            tr.remove();
+                        } else {
+                            msg.textContent = delData.error || 'Failed to delete.';
+                        }
+                    };
+                    tdDel.appendChild(delBtn);
+                    tr.appendChild(tdId);
+                    tr.appendChild(tdUrl);
+                    tr.appendChild(tdDel);
+                    tbody.appendChild(tr);
+                });
+                if (Object.keys(data.links).length === 0) {
+                    msg.textContent = 'No redirects found.';
+                }
+            } else {
+                tableSection.style.display = 'none';
+                msg.textContent = data.error || 'Failed to load links.';
+            }
+        });
+    </script>
+</body>
+</html>
