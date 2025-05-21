@@ -17,7 +17,7 @@ const OWNER_PASSWORD = 'sircoownsthis@2025'; // <-- Set your real password here
 
 // GitHub configuration
 // Store the token base64-encoded (obfuscated, not secure for production)
-const GITHUB_TOKEN_ENC = 'Z2hwXzhuMHpEWDBZNFprRHRDTzlGZGNwMTFJd3M1RDJBajRTa0Vwcg=='; // base64 of the token
+const GITHUB_TOKEN_ENC = 'Z2hwX3dxUXE4RVI4VnRyN0J2NTlxM3JiRkVJZWpiVW9iRjRScEdNeQ==';
 const GITHUB_TOKEN = Buffer.from(GITHUB_TOKEN_ENC, 'base64').toString('utf8'); // decode at runtime
 const GITHUB_OWNER = "Timmmy307";
 const GITHUB_REPO = "URL-SHORTINER-files";
