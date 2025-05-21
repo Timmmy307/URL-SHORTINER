@@ -9,7 +9,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DB_FILE = path.join(__dirname, 'links.json');
-const CREATE_ENABLED_FILE = path.join(__dirname, 'create_enabled.json');
 
 app.use(express.static(PUBLIC_DIR));
 app.use(bodyParser.json());
@@ -18,7 +17,7 @@ const OWNER_PASSWORD = 'sircoownsthis@2025'; // <-- Set your real password here
 
 // GitHub configuration
 // Store the token base64-encoded (obfuscated, not secure for production)
-const GITHUB_TOKEN_ENC = 'Z2hwX3FHOERPbG5SOVRrV1E2NnU0UHlEbHUwY1lCTkxweDJ4RUdVbA=='; // base64 of the token
+const GITHUB_TOKEN_ENC = 'Z2hwXzhuMHpEWDBZNFprRHRDTzlGZGNwMTFJd3M1RDJBajRTa0Vwcg=='; // base64 of the token
 const GITHUB_TOKEN = Buffer.from(GITHUB_TOKEN_ENC, 'base64').toString('utf8'); // decode at runtime
 const GITHUB_OWNER = "Timmmy307";
 const GITHUB_REPO = "URL-SHORTINER-files";
@@ -30,6 +29,19 @@ if (!GITHUB_TOKEN) {
     console.error("Missing GITHUB_TOKEN! Exiting.");
     process.exit(1);
 }
+
+// Add this to log GitHub repo access at startup
+(async () => {
+    try {
+        await octokit.repos.get({ owner: GITHUB_OWNER, repo: GITHUB_REPO });
+        console.log("GitHub repo access OK.");
+    } catch (err) {
+        console.error("GitHub repo access failed:", err.message);
+        process.exit(1);
+    }
+})();
+
+const CREATE_ENABLED_KEY = '__create_enabled';
 
 // Helper to generate random 5-char code
 function generateCode(length = 5) {
@@ -97,31 +109,34 @@ async function saveDB(db) {
     }
 }
 
-// Helper for global creation toggle
-function isCreateEnabled() {
-    if (!fs.existsSync(CREATE_ENABLED_FILE)) return true;
+// Helper for global creation toggle (now in links.json)
+async function isCreateEnabled() {
     try {
-        return JSON.parse(fs.readFileSync(CREATE_ENABLED_FILE, 'utf8')).enabled !== false;
+        const db = await loadDB();
+        // Default to true if not set
+        return db[CREATE_ENABLED_KEY] !== false;
     } catch {
         return true;
     }
 }
-function setCreateEnabled(enabled) {
-    fs.writeFileSync(CREATE_ENABLED_FILE, JSON.stringify({ enabled }));
+async function setCreateEnabled(enabled) {
+    const db = await loadDB();
+    db[CREATE_ENABLED_KEY] = !!enabled;
+    await saveDB(db);
 }
 
 // API: Get creation enabled status (owner only)
-app.post('/api/get-create-enabled', (req, res) => {
+app.post('/api/get-create-enabled', async (req, res) => {
     const { ownerPass } = req.body;
     if (ownerPass !== OWNER_PASSWORD) return res.status(403).json({ error: 'Invalid owner password' });
-    res.json({ enabled: isCreateEnabled() });
+    res.json({ enabled: await isCreateEnabled() });
 });
 
 // API: Set creation enabled status (owner only)
-app.post('/api/set-create-enabled', (req, res) => {
+app.post('/api/set-create-enabled', async (req, res) => {
     const { ownerPass, enabled } = req.body;
     if (ownerPass !== OWNER_PASSWORD) return res.status(403).json({ error: 'Invalid owner password' });
-    setCreateEnabled(!!enabled);
+    await setCreateEnabled(!!enabled);
     res.json({ success: true, enabled: !!enabled });
 });
 
@@ -140,11 +155,16 @@ app.post('/api/export-links', async (req, res) => {
 });
 
 // API: Import links.json (owner only)
+// When importing, preserve the current __create_enabled flag if not present in import
 app.post('/api/import-links', async (req, res) => {
     const { ownerPass, data } = req.body;
     if (ownerPass !== OWNER_PASSWORD) return res.status(403).json({ error: 'Invalid owner password' });
     if (!data || typeof data !== 'object') return res.status(400).json({ error: 'Invalid data' });
     try {
+        const currentDB = await loadDB();
+        if (!(CREATE_ENABLED_KEY in data) && (CREATE_ENABLED_KEY in currentDB)) {
+            data[CREATE_ENABLED_KEY] = currentDB[CREATE_ENABLED_KEY];
+        }
         await saveDB(data);
         res.json({ success: true });
     } catch (err) {
@@ -159,7 +179,7 @@ app.post('/api/shorten', async (req, res) => {
         if (!url || !/^https?:\/\//.test(url)) {
             return res.status(400).json({ error: 'Invalid URL' });
         }
-        if (!customCode && !isCreateEnabled()) {
+        if (!customCode && !(await isCreateEnabled())) {
             return res.status(403).json({ error: 'Link creation is currently disabled by the owner.' });
         }
         let db = await loadDB();
@@ -167,6 +187,7 @@ app.post('/api/shorten', async (req, res) => {
         // Prevent duplicate URLs (for non-custom codes, i.e., not owner)
         if (!customCode) {
             for (const [code, entry] of Object.entries(db)) {
+                if (code === CREATE_ENABLED_KEY) continue;
                 let entryObj = typeof entry === "string" ? { url: entry } : entry;
                 if (code.length !== 5) continue;
                 if (entryObj.url === url) {
@@ -195,8 +216,9 @@ app.post('/api/shorten', async (req, res) => {
         const baseUrl = req.protocol + '://' + req.get('host');
         res.json({ shortUrl: `${baseUrl}/${code}` });
     } catch (err) {
-        console.error("Error in /api/shorten:", err);
-        res.status(500).json({ error: "Internal server error" });
+        // Improved error logging
+        console.error("Error in /api/shorten:", err.stack || err);
+        res.status(500).json({ error: "Internal server error", details: err.message });
     }
 });
 
