@@ -3,43 +3,17 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const bodyParser = require('body-parser');
-const { Octokit } = require("@octokit/rest");
+const axios = require('axios');
+const MAIN_SERVER_URL = 'https://moving-badly-cheetah.ngrok-free.app'; // <-- use ngrok endpoint
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const DB_FILE = path.join(__dirname, 'links.json');
 
 app.use(express.static(PUBLIC_DIR));
 app.use(bodyParser.json());
 
 const OWNER_PASSWORD = 'sircoownsthis@2025'; // <-- Set your real password here
-
-// GitHub configuration
-// Store the token base64-encoded (obfuscated, not secure for production)
-const GITHUB_TOKEN_ENC = 'Z2hwX2VERzJRUkRVZ0F5Nmo5ZWhEVWFoUG1mVlZJaHRtdDFQTnY1Qw=='; // base64 of the token
-const GITHUB_TOKEN = Buffer.from(GITHUB_TOKEN_ENC, 'base64').toString('utf8'); // decode at runtime
-const GITHUB_OWNER = "Timmmy307";
-const GITHUB_REPO = "URL-SHORTINER-files";
-const GITHUB_PATH = "links.json";
-
-const octokit = new Octokit({ auth: GITHUB_TOKEN });
-
-if (!GITHUB_TOKEN) {
-    console.error("Missing GITHUB_TOKEN! Exiting.");
-    process.exit(1);
-}
-
-// Add this to log GitHub repo access at startup
-(async () => {
-    try {
-        await octokit.repos.get({ owner: GITHUB_OWNER, repo: GITHUB_REPO });
-        console.log("GitHub repo access OK.");
-    } catch (err) {
-        console.error("GitHub repo access failed:", err.message);
-        process.exit(1);
-    }
-})();
 
 const CREATE_ENABLED_KEY = '__create_enabled';
 
@@ -53,122 +27,88 @@ function generateCode(length = 5) {
     return code;
 }
 
-// Helper to fetch links.json from GitHub
-async function fetchLinksFromGitHub() {
-    try {
-        const res = await octokit.repos.getContent({
-            owner: GITHUB_OWNER,
-            repo: GITHUB_REPO,
-            path: GITHUB_PATH,
-        });
-        const content = Buffer.from(res.data.content, 'base64').toString();
-        return { json: JSON.parse(content), sha: res.data.sha };
-    } catch (err) {
-        // If file not found, treat as empty DB (only if 404)
-        if (err.status === 404) {
-            console.warn("links.json not found in repo, initializing empty DB.");
-            return { json: {}, sha: null };
-        }
-        console.error("Error fetching links.json from GitHub:", err);
-        throw new Error("Could not fetch links.json from GitHub");
-    }
-}
-
-// Helper to update links.json on GitHub
-async function updateLinksOnGitHub(newLinks, sha) {
-    try {
-        await octokit.repos.createOrUpdateFileContents({
-            owner: GITHUB_OWNER,
-            repo: GITHUB_REPO,
-            path: GITHUB_PATH,
-            message: "Update links.json",
-            content: Buffer.from(JSON.stringify(newLinks, null, 2)).toString('base64'),
-            sha: sha || undefined, // undefined if file doesn't exist yet
-        });
-    } catch (err) {
-        console.error("Error updating links.json on GitHub:", err);
-        throw new Error("Could not update links.json on GitHub");
-    }
-}
-
-// Helper to load/save DB
+// Helper to load/save DB from main server
 async function loadDB() {
     try {
-        const { json } = await fetchLinksFromGitHub();
-        return json;
-    } catch (err) {
-        throw err;
+        const res = await axios.get(`${MAIN_SERVER_URL}/shortener`);
+        return res.data;
+    } catch {
+        return {};
     }
 }
 async function saveDB(db) {
-    try {
-        const { sha } = await fetchLinksFromGitHub();
-        await updateLinksOnGitHub(db, sha);
-    } catch (err) {
-        throw err;
-    }
+    // Not used directly; use the POST/DELETE endpoints below
+}
+
+// Create or update a link on main server
+async function createOrUpdateLink(code, url, status, ownerPass) {
+    await axios.post(`${MAIN_SERVER_URL}/shortener`, { code, url, status, ownerPass });
+}
+
+// Delete a link on main server
+async function deleteLink(code, ownerPass) {
+    await axios.delete(`${MAIN_SERVER_URL}/shortener/${encodeURIComponent(code)}`, { data: { ownerPass } });
 }
 
 // Helper for global creation toggle (now in links.json)
-async function isCreateEnabled() {
+function isCreateEnabled() {
     try {
-        const db = await loadDB();
+        const db = loadDB();
         // Default to true if not set
         return db[CREATE_ENABLED_KEY] !== false;
     } catch {
         return true;
     }
 }
-async function setCreateEnabled(enabled) {
-    const db = await loadDB();
+function setCreateEnabled(enabled) {
+    const db = loadDB();
     db[CREATE_ENABLED_KEY] = !!enabled;
-    await saveDB(db);
+    saveDB(db);
 }
 
 // API: Get creation enabled status (owner only)
-app.post('/api/get-create-enabled', async (req, res) => {
+app.post('/api/get-create-enabled', (req, res) => {
     const { ownerPass } = req.body;
     if (ownerPass !== OWNER_PASSWORD) return res.status(403).json({ error: 'Invalid owner password' });
-    res.json({ enabled: await isCreateEnabled() });
+    res.json({ enabled: isCreateEnabled() });
 });
 
 // API: Set creation enabled status (owner only)
-app.post('/api/set-create-enabled', async (req, res) => {
+app.post('/api/set-create-enabled', (req, res) => {
     const { ownerPass, enabled } = req.body;
     if (ownerPass !== OWNER_PASSWORD) return res.status(403).json({ error: 'Invalid owner password' });
-    await setCreateEnabled(!!enabled);
+    setCreateEnabled(!!enabled);
     res.json({ success: true, enabled: !!enabled });
 });
 
 // API: Export links.json (owner only)
-app.post('/api/export-links', async (req, res) => {
+app.post('/api/export-links', (req, res) => {
     const { ownerPass } = req.body;
     if (ownerPass !== OWNER_PASSWORD) return res.status(403).json({ error: 'Invalid owner password' });
     try {
-        const { json } = await fetchLinksFromGitHub();
+        const json = loadDB();
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Content-Disposition', 'attachment; filename="links.json"');
         res.send(JSON.stringify(json, null, 2));
     } catch (err) {
-        res.status(500).json({ error: "Failed to fetch links.json from GitHub." });
+        res.status(500).json({ error: "Failed to fetch links.json from server." });
     }
 });
 
 // API: Import links.json (owner only)
-// When importing, preserve the current __create_enabled flag if not present in import
-app.post('/api/import-links', async (req, res) => {
+app.post('/api/import-links', (req, res) => {
     const { ownerPass, data } = req.body;
     if (ownerPass !== OWNER_PASSWORD) return res.status(403).json({ error: 'Invalid owner password' });
     if (!data || typeof data !== 'object') return res.status(400).json({ error: 'Invalid data' });
     try {
-        const currentDB = await loadDB();
+        const currentDB = loadDB();
         if (!(CREATE_ENABLED_KEY in data) && (CREATE_ENABLED_KEY in currentDB)) {
             data[CREATE_ENABLED_KEY] = currentDB[CREATE_ENABLED_KEY];
         }
-        await saveDB(data);
+        saveDB(data);
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: "Failed to update links.json on GitHub." });
+        res.status(500).json({ error: "Failed to update links.json on server." });
     }
 });
 
@@ -178,9 +118,6 @@ app.post('/api/shorten', async (req, res) => {
         let { url, customCode, ownerPass } = req.body;
         if (!url || !/^https?:\/\//.test(url)) {
             return res.status(400).json({ error: 'Invalid URL' });
-        }
-        if (!customCode && !(await isCreateEnabled())) {
-            return res.status(403).json({ error: 'Link creation is currently disabled by the owner.' });
         }
         let db = await loadDB();
 
@@ -211,47 +148,45 @@ app.post('/api/shorten', async (req, res) => {
                 code = generateCode();
             } while (db[code]);
         }
-        db[code] = { url, status: "active" };
-        await saveDB(db);
+        await createOrUpdateLink(code, url, "active", OWNER_PASSWORD);
         const baseUrl = req.protocol + '://' + req.get('host');
         res.json({ shortUrl: `${baseUrl}/${code}` });
     } catch (err) {
-        // Improved error logging
         console.error("Error in /api/shorten:", err.stack || err);
         res.status(500).json({ error: "Internal server error", details: err.message });
     }
 });
 
 // API to delete all redirects (owner only)
-app.post('/api/delete-all', async (req, res) => {
+app.post('/api/delete-all', (req, res) => {
     const { ownerPass } = req.body;
     if ((ownerPass || '').trim().toLowerCase() !== OWNER_PASSWORD.toLowerCase()) {
         return res.status(403).json({ error: 'Invalid owner password' });
     }
     try {
-        await saveDB({});
+        saveDB({});
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: "Failed to update links.json on GitHub." });
+        res.status(500).json({ error: "Failed to update links.json on server." });
     }
 });
 
 // API to list all links (owner only)
-app.post('/api/list-links', async (req, res) => {
+app.post('/api/list-links', (req, res) => {
     const { ownerPass } = req.body;
     if ((ownerPass || '').trim().toLowerCase() !== OWNER_PASSWORD.toLowerCase()) {
         return res.status(403).json({ error: 'Invalid owner password' });
     }
     try {
-        const db = await loadDB();
+        const db = loadDB();
         res.json({ success: true, links: db });
     } catch (err) {
-        res.status(500).json({ error: "Failed to fetch links.json from GitHub." });
+        res.status(500).json({ error: "Failed to fetch links.json from server." });
     }
 });
 
 // API to update a link (edit id, url, or status)
-app.post('/api/update-link', async (req, res) => {
+app.post('/api/update-link', (req, res) => {
     const { ownerPass, id, update } = req.body;
     if ((ownerPass || '').trim().toLowerCase() !== OWNER_PASSWORD.toLowerCase()) {
         return res.status(403).json({ error: 'Invalid owner password' });
@@ -260,7 +195,7 @@ app.post('/api/update-link', async (req, res) => {
         return res.status(400).json({ error: 'Missing id or update' });
     }
     try {
-        let db = await loadDB();
+        let db = loadDB();
         if (!(id in db)) {
             return res.status(404).json({ error: 'ID not found' });
         }
@@ -279,15 +214,15 @@ app.post('/api/update-link', async (req, res) => {
         } else {
             db[id] = link;
         }
-        await saveDB(db);
+        saveDB(db);
         res.json({ success: true, id: newId });
     } catch (err) {
-        res.status(500).json({ error: "Failed to update links.json on GitHub." });
+        res.status(500).json({ error: "Failed to update links.json on server." });
     }
 });
 
 // API to delete a single link (owner only)
-app.post('/api/delete-link', async (req, res) => {
+app.post('/api/delete-link', (req, res) => {
     const { ownerPass, id } = req.body;
     if ((ownerPass || '').trim().toLowerCase() !== OWNER_PASSWORD.toLowerCase()) {
         return res.status(403).json({ error: 'Invalid owner password' });
@@ -296,15 +231,66 @@ app.post('/api/delete-link', async (req, res) => {
         return res.status(400).json({ error: 'Missing id' });
     }
     try {
-        let db = await loadDB();
+        let db = loadDB();
         if (!(id in db)) {
             return res.status(404).json({ error: 'ID not found' });
         }
         delete db[id];
-        await saveDB(db);
+        saveDB(db);
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: "Failed to update links.json on GitHub." });
+        res.status(500).json({ error: "Failed to update links.json on server." });
+    }
+});
+
+// Expose a REST API at /shortener for external use (CRUD for links.json)
+
+// Get all links (GET)
+app.get('/shortener', (req, res) => {
+    try {
+        const db = loadDB();
+        res.json(db);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to read links.json" });
+    }
+});
+
+// Create or update a link (POST)
+app.post('/shortener', (req, res) => {
+    const { code, url, status, ownerPass } = req.body;
+    if ((ownerPass || '').trim() !== OWNER_PASSWORD) {
+        return res.status(403).json({ error: 'Invalid owner password' });
+    }
+    if (!code || !url) {
+        return res.status(400).json({ error: 'Missing code or url' });
+    }
+    try {
+        const db = loadDB();
+        db[code] = { url, status: status || "active" };
+        saveDB(db);
+        res.json({ success: true, code });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to update links.json" });
+    }
+});
+
+// Delete a link (DELETE)
+app.delete('/shortener/:code', (req, res) => {
+    const { ownerPass } = req.body;
+    if ((ownerPass || '').trim() !== OWNER_PASSWORD) {
+        return res.status(403).json({ error: 'Invalid owner password' });
+    }
+    const code = req.params.code;
+    try {
+        const db = loadDB();
+        if (!(code in db)) {
+            return res.status(404).json({ error: 'Code not found' });
+        }
+        delete db[code];
+        saveDB(db);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to update links.json" });
     }
 });
 
@@ -335,7 +321,7 @@ app.get('/:code', async (req, res, next) => {
             code === 'l'
         ) return next();
 
-        const db = await loadDB();
+        const db = loadDB();
         let entry = db[code];
         // Support old format
         if (typeof entry === "string") entry = { url: entry, status: "active" };
