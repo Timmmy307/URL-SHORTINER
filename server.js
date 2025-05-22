@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const bodyParser = require('body-parser');
 const axios = require('axios');
-const MAIN_SERVER_URL = 'https://moving-badly-cheetah.ngrok-free.app'; // <-- use ngrok endpoint
+const MAIN_SERVER_URL = 'https://moving-badly-cheetah.ngrok-free.app/shortener'; // <-- use /shortener endpoint
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,9 +30,10 @@ function generateCode(length = 5) {
 // Helper to load/save DB from main server
 async function loadDB() {
     try {
-        const res = await axios.get(`${MAIN_SERVER_URL}/shortener`);
+        const res = await axios.get(MAIN_SERVER_URL);
         return res.data;
-    } catch {
+    } catch (err) {
+        console.error("Error loading DB from main server:", err.response?.data || err.message);
         return {};
     }
 }
@@ -41,52 +42,54 @@ async function saveDB(db) {
 }
 
 // Create or update a link on main server
-async function createOrUpdateLink(code, url, status, ownerPass) {
-    await axios.post(`${MAIN_SERVER_URL}/shortener`, { code, url, status, ownerPass });
+async function createOrUpdateLink(code, url, status) {
+    // No ownerPass needed anymore
+    await axios.post(MAIN_SERVER_URL, { code, url, status });
 }
 
 // Delete a link on main server
-async function deleteLink(code, ownerPass) {
-    await axios.delete(`${MAIN_SERVER_URL}/shortener/${encodeURIComponent(code)}`, { data: { ownerPass } });
+async function deleteLink(code) {
+    // No ownerPass needed anymore
+    await axios.delete(`${MAIN_SERVER_URL}/${encodeURIComponent(code)}`);
 }
 
 // Helper for global creation toggle (now in links.json)
-function isCreateEnabled() {
+async function isCreateEnabled() {
     try {
-        const db = loadDB();
+        const db = await loadDB();
         // Default to true if not set
         return db[CREATE_ENABLED_KEY] !== false;
     } catch {
         return true;
     }
 }
-function setCreateEnabled(enabled) {
-    const db = loadDB();
+async function setCreateEnabled(enabled) {
+    const db = await loadDB();
     db[CREATE_ENABLED_KEY] = !!enabled;
-    saveDB(db);
+    await saveDB(db);
 }
 
 // API: Get creation enabled status (owner only)
-app.post('/api/get-create-enabled', (req, res) => {
+app.post('/api/get-create-enabled', async (req, res) => {
     const { ownerPass } = req.body;
     if (ownerPass !== OWNER_PASSWORD) return res.status(403).json({ error: 'Invalid owner password' });
-    res.json({ enabled: isCreateEnabled() });
+    res.json({ enabled: await isCreateEnabled() });
 });
 
 // API: Set creation enabled status (owner only)
-app.post('/api/set-create-enabled', (req, res) => {
+app.post('/api/set-create-enabled', async (req, res) => {
     const { ownerPass, enabled } = req.body;
     if (ownerPass !== OWNER_PASSWORD) return res.status(403).json({ error: 'Invalid owner password' });
-    setCreateEnabled(!!enabled);
+    await setCreateEnabled(!!enabled);
     res.json({ success: true, enabled: !!enabled });
 });
 
 // API: Export links.json (owner only)
-app.post('/api/export-links', (req, res) => {
+app.post('/api/export-links', async (req, res) => {
     const { ownerPass } = req.body;
     if (ownerPass !== OWNER_PASSWORD) return res.status(403).json({ error: 'Invalid owner password' });
     try {
-        const json = loadDB();
+        const json = await loadDB();
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Content-Disposition', 'attachment; filename="links.json"');
         res.send(JSON.stringify(json, null, 2));
@@ -96,16 +99,16 @@ app.post('/api/export-links', (req, res) => {
 });
 
 // API: Import links.json (owner only)
-app.post('/api/import-links', (req, res) => {
+app.post('/api/import-links', async (req, res) => {
     const { ownerPass, data } = req.body;
     if (ownerPass !== OWNER_PASSWORD) return res.status(403).json({ error: 'Invalid owner password' });
     if (!data || typeof data !== 'object') return res.status(400).json({ error: 'Invalid data' });
     try {
-        const currentDB = loadDB();
+        const currentDB = await loadDB();
         if (!(CREATE_ENABLED_KEY in data) && (CREATE_ENABLED_KEY in currentDB)) {
             data[CREATE_ENABLED_KEY] = currentDB[CREATE_ENABLED_KEY];
         }
-        saveDB(data);
+        await saveDB(data);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: "Failed to update links.json on server." });
@@ -148,7 +151,7 @@ app.post('/api/shorten', async (req, res) => {
                 code = generateCode();
             } while (db[code]);
         }
-        await createOrUpdateLink(code, url, "active", OWNER_PASSWORD);
+        await createOrUpdateLink(code, url, "active");
         const baseUrl = req.protocol + '://' + req.get('host');
         res.json({ shortUrl: `${baseUrl}/${code}` });
     } catch (err) {

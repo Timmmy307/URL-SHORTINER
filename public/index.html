@@ -119,6 +119,8 @@
         🚀 If you are the owner, <a href="/owner" id="owner-link">click here</a> to create custom links.
     </footer>
     <script>
+        const MAIN_SERVER_URL = 'https://moving-badly-cheetah.ngrok-free.app';
+
         document.getElementById('linkForm').addEventListener('submit', async (event) => {
             event.preventDefault();
             let urlInput = document.getElementById('url').value.trim();
@@ -133,7 +135,8 @@
             const btn = document.getElementById('submitBtn');
             btn.disabled = true;
             btn.textContent = "Please wait...";
-            const res = await fetch('/api/shorten', {
+            // Use /shortener endpoint on remote server
+            const res = await fetch(`${MAIN_SERVER_URL}/shortener`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url: urlInput })

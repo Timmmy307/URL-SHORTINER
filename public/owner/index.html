@@ -253,6 +253,12 @@
         </div>
     </div>
     <script>
+        const MAIN_SERVER_URL = 'https://moving-badly-cheetah.ngrok-free.app';
+
+        function apiUrl(path) {
+            return `${MAIN_SERVER_URL}/shortener${path}`;
+        }
+
         // --- Owner Auth Logic ---
         let ownerPassword = "";
         const ownerContent = document.getElementById('ownerContent');
@@ -272,11 +278,11 @@
                 ownerAuthMsg.textContent = "Enter password.";
                 return;
             }
-            // Test password by calling a protected endpoint
-            const res = await fetch('/api/get-create-enabled', {
+            // Use /shortener endpoint for owner auth
+            const res = await fetch(apiUrl(''), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ownerPass: pass })
+                body: JSON.stringify({ ownerPass: pass, action: 'get-create-enabled' })
             });
             const data = await res.json();
             if (data.enabled !== undefined) {
@@ -319,7 +325,7 @@
             statusBtn.style.cursor = 'pointer';
             statusBtn.onclick = async () => {
                 const newStatus = status === 'active' ? 'disabled' : 'active';
-                const res = await fetch('/api/update-link', {
+                const res = await fetch(apiUrl('/api/update-link'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ownerPass: pass, id, update: { status: newStatus } })
@@ -367,7 +373,7 @@
                 if (!/^https?:\/\//i.test(newUrl)) {
                     newUrl = 'https://' + newUrl;
                 }
-                const res = await fetch('/api/update-link', {
+                const res = await fetch(apiUrl('/api/update-link'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ownerPass: pass, id, update: { id: newId, url: newUrl } })
@@ -398,7 +404,7 @@
             delBtn.className = 'delBtn';
             delBtn.onclick = async () => {
                 if (!confirm(`Delete redirect "${id}"?`)) return;
-                const delRes = await fetch('/api/delete-link', {
+                const delRes = await fetch(apiUrl('/api/delete-link'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ownerPass: pass, id })
@@ -429,10 +435,10 @@
                 alert('Please enter the owner password.');
                 return;
             }
-            const res = await fetch('/api/list-links', {
+            const res = await fetch(apiUrl(''), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ownerPass: pass })
+                body: JSON.stringify({ ownerPass: pass, action: 'list-links' })
             });
             let data;
             try {
@@ -495,10 +501,10 @@
             toggleCreateBtn.disabled = true;
             toggleCreateBtn.textContent = "Loading...";
             createStatus.textContent = "";
-            const res = await fetch('/api/get-create-enabled', {
+            const res = await fetch(apiUrl(''), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ownerPass: pass })
+                body: JSON.stringify({ ownerPass: pass, action: 'get-create-enabled' })
             });
             const data = await res.json();
             if (data.enabled !== undefined) {
@@ -518,15 +524,15 @@
             if (!pass) return;
             toggleCreateBtn.disabled = true;
             toggleCreateBtn.textContent = "Please wait...";
-            const res = await fetch('/api/get-create-enabled', {
+            const res = await fetch(apiUrl(''), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ownerPass: pass })
+                body: JSON.stringify({ ownerPass: pass, action: 'get-create-enabled' })
             });
             const data = await res.json();
             if (data.enabled !== undefined) {
                 const newEnabled = !data.enabled;
-                const res2 = await fetch('/api/set-create-enabled', {
+                const res2 = await fetch(apiUrl('/api/set-create-enabled'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ownerPass: pass, enabled: newEnabled })
@@ -544,7 +550,7 @@
                 return;
             }
             adminMsg.textContent = "";
-            const res = await fetch('/api/export-links', {
+            const res = await fetch(apiUrl('/api/export-links'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ownerPass: pass })
@@ -586,7 +592,7 @@
                 adminMsg.textContent = "Invalid JSON file.";
                 return;
             }
-            const res = await fetch('/api/import-links', {
+            const res = await fetch(apiUrl('/api/import-links'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ownerPass: pass, data })
@@ -615,7 +621,7 @@
             linksJsonArea.value = "";
             linksJsonArea.disabled = true;
             saveLinksBtn.disabled = true;
-            const res = await fetch('/api/export-links', {
+            const res = await fetch(apiUrl('/api/export-links'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ownerPass: pass })
@@ -644,7 +650,7 @@
                 editLinksMsg.textContent = "Invalid JSON!";
                 return;
             }
-            const res = await fetch('/api/import-links', {
+            const res = await fetch(apiUrl('/api/import-links'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ownerPass: pass, data })
